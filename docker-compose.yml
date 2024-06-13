@@ -1,0 +1,61 @@
+version: '3.2'
+services:
+  proxysql:
+    image: proxysql/proxysql:2.6.3
+    ports:
+      - "6032:6032"
+      - "6070:6070"
+      - "6080:6080"
+
+  database-1:
+    image: mariadb:11.4.2
+    env_file:
+      - database.env
+    ports:
+      - "3307:3306"
+    depends_on:
+      - proxysql
+    volumes:
+      - database-1-data:/var/lib/mysql
+      - database-1-galera.cnf:/etc/mysql/conf.d
+
+  database-2:
+    image: mariadb:11.4.2
+    env_file:
+      - database.env
+    ports:
+      - "3308:3306"
+    depends_on:
+      - proxysql
+      - database-1
+    volumes:
+      - database-2-data:/var/lib/mysql
+      - database-2-galera.cnf:/etc/mysql/conf.d
+
+  db-loadbalancer:
+    image: mariadb/maxscale:24.02.1
+    ports:
+      - "3306:3306"
+      - "8989:8989"
+    depends_on:
+      - database-1
+      - database-2
+
+  keycloak:
+    image: keycloak/keycloak:24.0.4
+    env_file:
+      - keycloak.env
+    ports:
+      - "8080:8080"
+    command: start-dev
+
+  backend:
+    build: ./backend
+    ports:
+      - 5001:5001
+
+volumes:
+  database-1-data:
+  database-1-galera.cnf:
+  database-2-data:
+  database-2-galera.cnf:
